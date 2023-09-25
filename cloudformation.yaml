@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: -mein cloudformation--
+#Metadata: 
+
+#Parameters: 
+
+#Mappings: 
+
+#Conditions: 
+
+Resources: 
+ cloudformationvpc:
+  Type: AWS::EC2::VPC
+  Properties:
+    CidrBlock: 10.0.0.0/16
+    EnableDnsSupport: true
+    Tags:
+      - Key: Name
+        Value: cloudformation
+ IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: CF IGW
+ AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref cloudformationvpc
+      InternetGatewayId: !Ref IGW 
+ CFrouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cloudformationvpc
+      Tags:
+        - Key: Name
+          Value: CFrouteTable
+ routeTableAssocName1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref subnet1
+      RouteTableId: !Ref CFrouteTable 
+ routeTableAssocName2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref subnet2
+      RouteTableId: !Ref CFrouteTable  
+ routeName:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref CFrouteTable 
+      DestinationCidrBlock: 0.0.0.0/0
+
+      GatewayId: !Ref IGW          
+
+   
+ subnet1:
+  Type: AWS::EC2::Subnet
+  Properties:
+    AvailabilityZone: eu-central-1a
+    VpcId: !Ref cloudformationvpc
+    CidrBlock: 10.0.0.0/24
+    Tags:
+      - Key: Name
+        Value: cloudformationsub1
+
+ subnet2:
+  Type: AWS::EC2::Subnet
+  Properties:
+    AvailabilityZone: eu-central-1b
+    VpcId: !Ref cloudformationvpc
+    CidrBlock: 10.0.1.0/24
+    Tags:
+       - Key: Name
+         Value: cloudformationsub2    
+ myEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      #KeyName: 
+      DisableApiTermination: true  
+      ImageId: ami-01342111f883d5e4e
+      InstanceType: t3.micro
+      Monitoring: false
+      SubnetId: !Ref subnet1
+      SecurityGroupIds:
+        - !Ref mysecGroup
+      UserData: !Base64 |
+       #!/bin/bash -ex
+       yum update -y
+       yum install httpd -y 
+       systemctl start httpd
+       systemctl enable httpd
+      Tags:
+        - Key: Name
+          Value: my EC2
+ mysecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      #GroupName: security-group 
+      GroupDescription: Enable access to sec group1
+      VpcId: !Ref cloudformationvpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+     
+      Tags:
+        - Key: Name
+          Value:  sec group1       
+      
+Outputs:
+ VPCid:
+   Description: the VPC id
+   Value: !Ref cloudformationvpc
